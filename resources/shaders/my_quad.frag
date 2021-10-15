@@ -27,8 +27,8 @@ void main()
 		for (int j = -kernelSize; j <= kernelSize; j++)
 		{
 			vec4 curr = texture(colorTex, tex + vec2(i * dx, j * dy));
-			float f = float(i);
-			float weight = exp(-k_1 * f * f  -k_2 * length(curr - originColor));
+			float f = sqrt(float(i) * float(i) + float(j) * float(j));
+			float weight = exp(-k_1 * f * f  -k_2 * length(curr - originColor) * length(curr - originColor));
 
 			clr += weight * curr;
 			weightSum += weight;
