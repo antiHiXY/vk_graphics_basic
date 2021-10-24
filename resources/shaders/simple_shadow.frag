@@ -12,6 +12,7 @@ layout (location = 0 ) in VS_OUT
   vec3 wNorm;
   vec3 wTangent;
   vec2 texCoord;
+  vec4 color;
 } surf;
 
 layout(binding = 0, set = 0) uniform AppData
@@ -33,10 +34,10 @@ void main()
   const vec4 dark_violet = vec4(0.59f, 0.0f, 0.82f, 1.0f);
   const vec4 chartreuse  = vec4(0.5f, 1.0f, 0.0f, 1.0f);
 
-  vec4 lightColor1 = mix(dark_violet, chartreuse, abs(sin(Params.time)));
-  vec4 lightColor2 = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+  vec4 lightColor1 = surf.color;                                              // from vertex shader
+  vec4 lightColor2 = vec4(exp(surf.wPos) * exp(1.f / surf.wNorm) * 5.f, 1.f);
    
   vec3 lightDir   = normalize(Params.lightPos - surf.wPos);
-  vec4 lightColor = max(dot(surf.wNorm, lightDir), 0.0f) * lightColor1;
+  vec4 lightColor = max(dot(surf.wNorm, lightDir), 0.0f) * lightColor2;
   out_fragColor   = (lightColor*shadow + vec4(0.1f)) * vec4(Params.baseColor, 1.0f);
 }
