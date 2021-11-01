@@ -6,59 +6,57 @@ layout(local_size_x = GROUP_SIZE) in;
 
 layout(push_constant) uniform params 
 {
-  uint len;
-} PushConstant;
-
+    uint len;
+}   PushConstant;
 layout(std430, binding = 0) buffer a 
 {
-    float A[];
+    float arr[];
 };
-
 layout(std430, binding = 1) buffer Sum
 {
     float sum[];
 };
+layout(std430, binding = 2) buffer FinalSum
+{
+    float finalSum[];
+};
 
-shared float cache[GROUP_SIZE * 2];
+shared float cache[GROUP_SIZE];
 
 void main() 
 {
     uint idx = gl_GlobalInvocationID.x;
-    int offset = 1;
-    cache[2 * idx] = A[2 * idx];
-    cache[2 * idx + 1] = A[2 * idx + 1];
+    uint groupID = gl_WorkGroupID.x;
+    uint localID = gl_LocalInvocationID.x;
+
+    uint groupToWork = groupID * GROUP_SIZE;
+    uint blockLength = (groupID + 1) * GROUP_SIZE > PushConstant.len ? PushConstant.len - groupToWork : GROUP_SIZE;
+
+    cache[localID] = localID < blockLength ? arr[idx] : 0;
+
+    for (uint offset = 1; offset <= GROUP_SIZE >> 1; offset <<= 1)
+    {
+        barrier();
+        if ((localID + 1) % (offset << 1) == 0)
+            cache[localID] += cache[localID - offset];
+    }
     barrier();
-
-    for (uint d = GROUP_SIZE >> 1; d > 0; d >>= 1)
+    if (localID == GROUP_SIZE - 1)
+    {
+        sum[groupID] = cache[localID];
+        cache[localID] = 0;
+    }
+    for (uint offset = GROUP_SIZE >> 1; offset >= 1; offset >>= 1) 
     {
         barrier();
-        if (idx < d)
+        if ((localID + 1) % (offset << 1) == 0)
         {
-            uint a = offset * (2 * idx + 1) - 1;
-            uint b = offset * (2 * idx + 2) - 1;
-
-            cache[b] += cache[a];
-        }
-        offset *= 2;
-    }
-    if (idx == 0)
-    {
-        cache[GROUP_SIZE - 1] = 0;
-    }
-    for (uint d = 1; d < GROUP_SIZE; d *= 2)
-    {
-        offset >>= 1;
-        barrier();
-        if (idx < d)
-        {
-            uint a = offset * (2 * idx + 1) - 1;
-            uint b = offset * (2 * idx + 2) - 1;
-            float tmp = cache[a];
-            cache[a] = cache[b];
-            cache[b] += tmp;
+            float temp = cache[localID];
+            cache[localID] += cache[localID - offset];
+            cache[localID - offset] = temp;
         }
     }
     barrier();
-    sum[2 * idx] = cache[2 * idx];
-    sum[2 * idx + 1] = cache[2 * idx + 1];
+    if (localID < blockLength)
+        finalSum[idx] = cache[localID];
 }

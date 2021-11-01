@@ -1,0 +1,29 @@
+#version 430
+
+#define GROUP_SIZE 256
+
+layout(local_size_x = GROUP_SIZE) in;
+
+layout(push_constant) uniform params 
+{
+    uint len;
+}   PushConstant;
+layout(std430, binding = 0) buffer a 
+{
+    float sum[];
+};
+
+layout(std430, binding = 1) buffer FinalSum
+{
+    float finalSum[];
+};
+
+shared float cache[GROUP_SIZE];
+
+void main() 
+{
+    uint idx = gl_GlobalInvocationID.x;
+    uint groupID = gl_WorkGroupID.x;
+    if (idx < PushConstant.len)
+       finalSum[idx] += sum[groupID];
+}
