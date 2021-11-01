@@ -39,7 +39,7 @@ void SimpleCompute::InitVulkan(const char** a_instanceExtensions, uint32_t a_ins
 
   m_cmdBufferCompute = vk_utils::createCommandBuffers(m_device, m_commandPool, 1)[0];
 
-  m_pCopyHelper = std::make_shared<vk_utils::SimpleCopyHelper>(m_physicalDevice, m_device, m_transferQueue, m_queueFamilyIDXs.compute, 8*1024*1024);
+  m_pCopyHelper = std::make_unique<vk_utils::SimpleCopyHelper>(m_physicalDevice, m_device, m_transferQueue, m_queueFamilyIDXs.compute, 8*1024*1024);
 }
 
 
@@ -75,26 +75,37 @@ void SimpleCompute::CreateDevice(uint32_t a_deviceId)
 void SimpleCompute::SetupSimplePipeline()
 {
   std::vector<std::pair<VkDescriptorType, uint32_t> > dtypes = {
-      {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,             3}
+      {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,             8}
   };
+
+  m_descriptorSets.resize(3);
+  m_descriptorSetLayouts.resize(2);
 
   // Создание и аллокация буферов
   m_A = vk_utils::createBuffer(m_device, sizeof(float) * m_length, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-  m_sum = vk_utils::createBuffer(m_device, sizeof(float) * m_length, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  m_sum = vk_utils::createBuffer(m_device, sizeof(float) * m_groupsAmount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
   m_sum_final = vk_utils::createBuffer(m_device, sizeof(float) * m_length, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
   vk_utils::allocateAndBindWithPadding(m_device, m_physicalDevice, {m_A, m_sum, m_sum_final}, 0);
 
-  m_pBindings = std::make_shared<vk_utils::DescriptorMaker>(m_device, dtypes, 1);
+  m_pBindings = std::make_unique<vk_utils::DescriptorMaker>(m_device, dtypes, 3);
 
   // Создание descriptor set для передачи буферов в шейдер
   m_pBindings->BindBegin(VK_SHADER_STAGE_COMPUTE_BIT);
   m_pBindings->BindBuffer(0, m_A);
   m_pBindings->BindBuffer(1, m_sum);
-  m_pBindings->BindEnd(&m_sumDS, &m_sumDSLayout);
+  m_pBindings->BindBuffer(2, m_sum_final);
+  m_pBindings->BindEnd(m_descriptorSets.data(), m_descriptorSetLayouts.data());
 
   m_pBindings->BindBegin(VK_SHADER_STAGE_COMPUTE_BIT);
-  m_pBindings->BindBuffer(2, m_sum_final);
-  m_pBindings->BindEnd(&m_sumDS_s, &m_sumDSLayout_s);
+  m_pBindings->BindBuffer(0, m_sum);
+  m_pBindings->BindBuffer(1, m_sum);
+  m_pBindings->BindBuffer(2, m_sum);
+  m_pBindings->BindEnd(m_descriptorSets.data() + 1, m_descriptorSetLayouts.data());
+
+  m_pBindings->BindBegin(VK_SHADER_STAGE_COMPUTE_BIT);
+  m_pBindings->BindBuffer(0, m_sum);
+  m_pBindings->BindBuffer(1, m_sum_final);
+  m_pBindings->BindEnd(m_descriptorSets.data() + 2, m_descriptorSetLayouts.data() + 1);
 
   // Заполнение буферов
   std::vector<float> values(m_length);
@@ -102,9 +113,6 @@ void SimpleCompute::SetupSimplePipeline()
     values[i] = (float)i;
   }
   m_pCopyHelper->UpdateBuffer(m_A, 0, values.data(), sizeof(float) * values.size());
-  for (uint32_t i = 0; i < values.size(); ++i) {
-    values[i] = (float)i * i;
-  }
 }
 
 void SimpleCompute::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkPipeline)
@@ -112,30 +120,57 @@ void SimpleCompute::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkPipeli
   vkResetCommandBuffer(a_cmdBuff, 0);
 
   m_pipelines.resize(2);
-  m_layouts.resize(2);
+  //m_layouts.resize(2);
 
   VkCommandBufferBeginInfo beginInfo = {};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-  VkMemoryBarrier memBarrier = {};
-  memBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-  memBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-  memBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
   // Заполняем буфер команд
   VK_CHECK_RESULT(vkBeginCommandBuffer(a_cmdBuff, &beginInfo));
 
-  vkCmdBindPipeline      (a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelines[0]);
-  vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE, m_layouts[0], 0, 1, &m_sumDS, 0, NULL);
-
+  vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelines[0]);
+  vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE, m_layouts[0], 0, 1, m_descriptorSets.data(), 0, NULL);
   vkCmdPushConstants(a_cmdBuff, m_layouts[0], VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(m_length), &m_length);
+  vkCmdDispatch(a_cmdBuff, m_groupsAmount, 1, 1);
 
-  vkCmdDispatch(a_cmdBuff, 1, 1, 1);
+
+  std::array barriers
+  {
+      VkBufferMemoryBarrier
+      {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+          .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+          .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+          .buffer = m_sum,
+          .offset = 0,
+          .size = sizeof(float) * m_groupsAmount
+      },
+      VkBufferMemoryBarrier
+      {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+          .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+          .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+          .buffer = m_sum_final,
+          .offset = 0,
+          .size = sizeof(float) * m_length,
+      }
+  };
+
   vkCmdPipelineBarrier(m_cmdBufferCompute, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                       {}, 1, &memBarrier, 0, nullptr, 0, nullptr);
+                       {}, 0, nullptr, barriers.size(), barriers.data(), 0, nullptr);
+
+  vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE, m_layouts[0], 0, 1, m_descriptorSets.data() + 1, 0, NULL);
+  vkCmdPushConstants(a_cmdBuff, m_layouts[0], VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(m_groupsAmount), &m_groupsAmount);
+  vkCmdDispatch(a_cmdBuff, 1, 1, 1);
+
+  vkCmdPipelineBarrier(m_cmdBufferCompute, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                       {}, 0, nullptr, 1, barriers.data(), 0, nullptr);
 
   vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelines[1]);
-  vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE, m_layouts[1], 0, 1, &m_sumDS_s, 0, NULL);
-  vkCmdDispatch(a_cmdBuff, 1, 1, 1);
+  vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE, m_layouts[1], 0, 1, m_descriptorSets.data() + 2, 0, NULL);
+  vkCmdPushConstants(a_cmdBuff, m_layouts[1], VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(m_length), &m_length);
+  vkCmdDispatch(a_cmdBuff, m_groupsAmount, 1, 1);
+
   VK_CHECK_RESULT(vkEndCommandBuffer(a_cmdBuff));
 }
 
@@ -175,17 +210,24 @@ void SimpleCompute::Cleanup()
 
 void SimpleCompute::CreateComputePipeline()
 {
+  m_layouts.resize(2);
   // Загружаем шейдер
   std::vector<uint32_t> code = vk_utils::readSPVFile("../resources/shaders/simple.comp.spv");
   std::vector<uint32_t> code_s = vk_utils::readSPVFile("../resources/shaders/dimple.comp.spv");
-  VkShaderModuleCreateInfo createInfo = {};
-  createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-  createInfo.pCode    = code.data();
-  createInfo.codeSize = code.size()*sizeof(uint32_t);
-  VkShaderModuleCreateInfo createInfo_s = {};
-  createInfo_s.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-  createInfo_s.pCode = code_s.data();
-  createInfo_s.codeSize = code_s.size() * sizeof(uint32_t);
+  VkShaderModuleCreateInfo createInfo
+  {
+      .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+      .codeSize = code.size() * sizeof(uint32_t),
+      .pCode = code.data()
+  };
+
+  VkShaderModuleCreateInfo createInfo_s
+  {
+      .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+      .codeSize = code_s.size() * sizeof(uint32_t),
+      .pCode = code_s.data()
+  };
+
 
   VkShaderModule shaderModule;
   VkShaderModule shaderModule_s;
@@ -193,53 +235,52 @@ void SimpleCompute::CreateComputePipeline()
   VK_CHECK_RESULT(vkCreateShaderModule(m_device, &createInfo, NULL, &shaderModule));
   VK_CHECK_RESULT(vkCreateShaderModule(m_device, &createInfo_s, NULL, &shaderModule_s));
 
-  VkPipelineShaderStageCreateInfo shaderStageCreateInfo = {};
-  shaderStageCreateInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-  shaderStageCreateInfo.stage  = VK_SHADER_STAGE_COMPUTE_BIT;
-  shaderStageCreateInfo.module = shaderModule;
-  shaderStageCreateInfo.pName  = "main";
+  VkPipelineShaderStageCreateInfo shaderStageCreateInfo
+  {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+      .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+      .module = shaderModule,
+      .pName = "main"
+  };
 
-  VkPipelineShaderStageCreateInfo shaderStageCreateInfo_s = {};
-  shaderStageCreateInfo_s.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-  shaderStageCreateInfo_s.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-  shaderStageCreateInfo_s.module = shaderModule_s;
-  shaderStageCreateInfo_s.pName = "main";
 
-  VkPushConstantRange pcRange = {};
-  pcRange.offset = 0;
-  pcRange.size = sizeof(m_length);
-  pcRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-  ////TODO хз нужен ли вторая пушконстанта////
+  VkPipelineShaderStageCreateInfo shaderStageCreateInfo_s
+  {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+      .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+      .module = shaderModule_s,
+      .pName = "main"
+  };
+
+  VkPushConstantRange pcRange
+  {
+      .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+      .offset = 0,
+      .size = sizeof(m_length) * 2
+  };
 
   // Создаём layout для pipeline
-  VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
-  pipelineLayoutCreateInfo.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  pipelineLayoutCreateInfo.setLayoutCount = 1;
-  pipelineLayoutCreateInfo.pSetLayouts    = &m_sumDSLayout;
-  pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
-  pipelineLayoutCreateInfo.pPushConstantRanges = &pcRange;
+  VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo
+  {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      .setLayoutCount = 1,
+      .pSetLayouts = m_descriptorSetLayouts.data(),
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges = &pcRange
+  };
+
   VK_CHECK_RESULT(vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, NULL, &m_layouts[0]));
 
-  VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo_s = {};
-  pipelineLayoutCreateInfo_s.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  pipelineLayoutCreateInfo_s.setLayoutCount = 1;
-  pipelineLayoutCreateInfo_s.pSetLayouts = &m_sumDSLayout_s;
-  pipelineLayoutCreateInfo_s.pushConstantRangeCount = 1;
-  //pipelineLayoutCreateInfo_s.pPushConstantRanges = &pcRange;
+  VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo_s
+  {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      .setLayoutCount = 1,
+      .pSetLayouts = m_descriptorSetLayouts.data() + 1,
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges = &pcRange
+  };
+
   VK_CHECK_RESULT(vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo_s, NULL, &m_layouts[1]));
-
-  /*
-  VkComputePipelineCreateInfo pipelineCreateInfo = {};
-  pipelineCreateInfo.sType  = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-  pipelineCreateInfo.stage  = shaderStageCreateInfo;
-  pipelineCreateInfo.layout = m_layout;
-
-  VkComputePipelineCreateInfo pipelineCreateInfo = {};
-  pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-  pipelineCreateInfo.stage = shaderStageCreateInfo;
-  pipelineCreateInfo.layout = m_layout;
-  */
-
 
   std::array pipelineCreateInfos
   {
@@ -256,9 +297,9 @@ void SimpleCompute::CreateComputePipeline()
       .layout = m_layouts[1]
     }
   };
-
+  m_pipelines.resize(pipelineCreateInfos.size());
   // Создаём pipeline - объект, который выставляет шейдер и его параметры
-  VK_CHECK_RESULT(vkCreateComputePipelines(m_device, VK_NULL_HANDLE, 1, pipelineCreateInfos.data(), NULL, m_pipelines.data()));
+  VK_CHECK_RESULT(vkCreateComputePipelines(m_device, VK_NULL_HANDLE, pipelineCreateInfos.size(), pipelineCreateInfos.data(), NULL, m_pipelines.data()));
 
   vkDestroyShaderModule(m_device, shaderModule, nullptr);
 }

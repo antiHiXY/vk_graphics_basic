@@ -11,6 +11,8 @@
 #include <iostream>
 #include <memory>
 
+constexpr uint32_t GROUP_SIZE = 256;
+
 class SimpleCompute : public ICompute
 {
 public:
@@ -61,9 +63,10 @@ private:
   VkCommandBuffer m_cmdBufferCompute;
   VkFence m_fence;
 
-  std::shared_ptr<vk_utils::DescriptorMaker> m_pBindings = nullptr;
+  std::unique_ptr<vk_utils::DescriptorMaker> m_pBindings = nullptr;
 
   uint32_t m_length  = 16u;
+  uint32_t m_groupsAmount  = uint32_t(ceil(double(m_length) / GROUP_SIZE));
   
   VkPhysicalDeviceFeatures m_enabledDeviceFeatures = {};
   std::vector<const char*> m_deviceExtensions      = {};
@@ -71,13 +74,10 @@ private:
 
   bool m_enableValidation;
   std::vector<const char*> m_validationLayers;
-  std::shared_ptr<vk_utils::ICopyEngine> m_pCopyHelper;
+  std::unique_ptr<vk_utils::ICopyEngine> m_pCopyHelper;
 
-  VkDescriptorSet       m_sumDS; 
-  VkDescriptorSetLayout m_sumDSLayout = nullptr;
-  VkDescriptorSet       m_sumDS_s;
-  VkDescriptorSetLayout m_sumDSLayout_s = nullptr;
-  
+  std::vector <VkDescriptorSetLayout> m_descriptorSetLayouts = {nullptr};
+  std::vector <VkDescriptorSet> m_descriptorSets;
   std::vector <VkPipeline> m_pipelines;
   std::vector <VkPipelineLayout> m_layouts;
 
