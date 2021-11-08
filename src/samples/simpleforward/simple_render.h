@@ -20,6 +20,7 @@ class SimpleRender : public IRender
 public:
   const std::string VERTEX_SHADER_PATH = "../resources/shaders/simple.vert";
   const std::string FRAGMENT_SHADER_PATH = "../resources/shaders/simple.frag";
+  const std::string COMPUTE_SHADER_PATH = "../resources/shaders/frust_culling.comp";
 
   SimpleRender(uint32_t a_width, uint32_t a_height);
   ~SimpleRender()  { Cleanup(); };
@@ -89,18 +90,31 @@ protected:
   struct
   {
     LiteMath::float4x4 projView;
-    LiteMath::float4x4 model;
-  } pushConst2M;
+    uint indexCount;
+    uint firstIndex;
+    int  vertexOffset;
+  } pushConstM;
 
   UniformParams m_uniforms {};
   VkBuffer m_ubo = VK_NULL_HANDLE;
+  VkBuffer m_modelMatrices;
+  VkBuffer m_instanceIndicesBuffer;
+  VkBuffer m_indirectionBuffer;
   VkDeviceMemory m_uboAlloc = VK_NULL_HANDLE;
+  VkDeviceMemory m_modelMatAlloc = VK_NULL_HANDLE;
+  VkDeviceMemory m_instanceAlloc = VK_NULL_HANDLE;
+  VkDeviceMemory m_indirectAlloc = VK_NULL_HANDLE;
   void* m_uboMappedMem = nullptr;
 
   pipeline_data_t m_basicForwardPipeline {};
 
+  VkPipeline m_compPipeline;
+  VkPipelineLayout m_compPipelineLayout;
+
   VkDescriptorSet m_dSet = VK_NULL_HANDLE;
   VkDescriptorSetLayout m_dSetLayout = VK_NULL_HANDLE;
+  VkDescriptorSet m_compDSet = VK_NULL_HANDLE;
+  VkDescriptorSetLayout m_compDSetLayout = VK_NULL_HANDLE;
   VkRenderPass m_screenRenderPass = VK_NULL_HANDLE; // main renderpass
 
   std::shared_ptr<vk_utils::DescriptorMaker> m_pBindings = nullptr;
@@ -144,6 +158,11 @@ protected:
   virtual void SetupSimplePipeline();
   void CleanupPipelineAndSwapchain();
   void RecreateSwapChain();
+
+  void CreateComputePipeline();
+
+  void CreateInstanceIndicesBuffer();
+  void CreateIndirectBuffer();
 
   void CreateUniformBuffer();
   void UpdateUniformBuffer(float a_time);

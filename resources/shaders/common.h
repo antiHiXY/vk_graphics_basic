@@ -27,5 +27,12 @@ struct UniformParams
   vec3  baseColor;
   bool animateLightColor;
 };
-
+struct DrawIndexedIndirect
+{
+    uint    indexCount;
+    uint    instanceCount;
+    uint    firstIndex;
+    int     vertexOffset;
+    uint    firstInstance;
+};
 #endif //VK_GRAPHICS_BASIC_COMMON_H

@@ -1,0 +1,74 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+
+#define NUMBEROFINSTANCES 30
+
+#include "common.h"
+
+layout (local_size_x = NUMBEROFINSTANCES) in;
+
+layout (push_constant) uniform params_t
+{
+    mat4 mProjView;
+    uint indexCount;
+    uint firstIndex;
+    int  vertexOffset;
+} params;
+
+layout(std430, binding = 0) buffer BboxBuffer 
+{
+    vec4 bBoxBuf[];
+};
+
+layout(std430, binding = 1) buffer InstancesToDrow 
+{
+    uint instInd[];
+};
+
+layout(std430, binding = 2) buffer indirectionBuffer
+{
+    DrawIndexedIndirect indirection[];
+};
+
+shared uint counter;
+
+const vec4 MinFrustrumPoint = vec4(-1, -1, 0, 1);
+const vec4 MaxFrustrumPoint = vec4(1, 1, 1, 1);
+
+bool isPointInsideAABB(vec4 point) 
+{
+  return (point.x >= MinFrustrumPoint.x && point.x <= MaxFrustrumPoint.x) &&
+         (point.y >= MinFrustrumPoint.y && point.y <= MaxFrustrumPoint.y) &&
+         (point.z >= MinFrustrumPoint.z && point.z <= MaxFrustrumPoint.z);
+}
+
+void main() 
+{
+    uint idx = gl_GlobalInvocationID.x;
+    instInd[idx] = NUMBEROFINSTANCES;
+    if (idx == 0) 
+        counter = 0;
+    barrier();
+
+    vec4 minbBoxPoint = bBoxBuf[2 * idx];
+    vec4 maxbBoxPoint = bBoxBuf[2 * idx + 1];
+    vec4 minProjPoint = params.mProjView * minbBoxPoint;
+    vec4 maxProjPoint = params.mProjView * maxbBoxPoint;
+    minProjPoint = minProjPoint / minProjPoint.w;
+    maxProjPoint = maxProjPoint / maxProjPoint.w;
+    if (isPointInsideAABB(minProjPoint) && isPointInsideAABB(maxProjPoint)) 
+    {
+        uint i = atomicAdd(counter, 1);
+        instInd[i] = idx;
+    }
+    barrier();
+
+    if (idx == 0) 
+    {
+        indirection[0].indexCount = params.indexCount;
+        indirection[0].instanceCount = counter;
+        indirection[0].firstIndex = params.firstIndex;
+        indirection[0].vertexOffset = params.vertexOffset;
+        indirection[0].firstInstance = 0;
+    }
+}

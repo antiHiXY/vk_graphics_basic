@@ -45,8 +45,8 @@ void ImGuiRender::InitImGui()
 
   vk_utils::RenderTargetInfo2D rtInfo = {};
   rtInfo.format = m_swapchain->GetFormat();
-  rtInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-  rtInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  rtInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+  rtInfo.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
   rtInfo.finalLayout   = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
   m_renderpass   = vk_utils::createRenderPass(m_device, rtInfo);
