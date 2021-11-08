@@ -291,7 +291,7 @@ void SimpleRender::CreateInstanceIndicesBuffer()
 
 void SimpleRender::CreateIndirectBuffer()
 {
-    m_indirectionBuffer = vk_utils::createBuffer(m_device, sizeof(VkDrawIndexedIndirectCommand) * NUMBEROFINSTANCES, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
+    m_indirectionBuffer = vk_utils::createBuffer(m_device, sizeof(DrawIndexedIndirect), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
     m_indirectAlloc = vk_utils::allocateAndBindWithPadding(m_device, m_physicalDevice, {m_indirectionBuffer}, 0);
 }
 

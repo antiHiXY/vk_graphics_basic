@@ -1,7 +1,7 @@
 #ifndef CHIMERA_SCENE_MGR_H
 #define CHIMERA_SCENE_MGR_H
 
-constexpr int NUMBEROFINSTANCES = 30;
+constexpr int NUMBEROFINSTANCES = 100;
 
 #include <vector>
 
