@@ -17,6 +17,7 @@ SimpleRender::SimpleRender(uint32_t a_width, uint32_t a_height) : m_width(a_widt
 void SimpleRender::SetupDeviceFeatures()
 {
   // m_enabledDeviceFeatures.fillModeNonSolid = VK_TRUE;
+    m_enabledDeviceFeatures.geometryShader = VK_TRUE;
 }
 
 void SimpleRender::SetupDeviceExtensions()
@@ -139,30 +140,31 @@ void SimpleRender::SetupSimplePipeline()
 
   // if we are recreating pipeline (for example, to reload shaders)
   // we need to cleanup old pipeline
-  if(m_basicForwardPipeline.layout != VK_NULL_HANDLE)
+  if (m_wireFramePipeline.layout != VK_NULL_HANDLE)
   {
-    vkDestroyPipelineLayout(m_device, m_basicForwardPipeline.layout, nullptr);
-    m_basicForwardPipeline.layout = VK_NULL_HANDLE;
+      vkDestroyPipelineLayout(m_device, m_wireFramePipeline.layout, nullptr);
+      m_wireFramePipeline.layout = VK_NULL_HANDLE;
   }
-  if(m_basicForwardPipeline.pipeline != VK_NULL_HANDLE)
+  if (m_wireFramePipeline.pipeline != VK_NULL_HANDLE)
   {
-    vkDestroyPipeline(m_device, m_basicForwardPipeline.pipeline, nullptr);
-    m_basicForwardPipeline.pipeline = VK_NULL_HANDLE;
+      vkDestroyPipeline(m_device, m_wireFramePipeline.pipeline, nullptr);
+      m_wireFramePipeline.pipeline = VK_NULL_HANDLE;
   }
 
-  vk_utils::GraphicsPipelineMaker maker;
+  vk_utils::GraphicsPipelineMaker maker_wf;
 
-  std::unordered_map<VkShaderStageFlagBits, std::string> shader_paths;
-  shader_paths[VK_SHADER_STAGE_FRAGMENT_BIT] = FRAGMENT_SHADER_PATH + ".spv";
-  shader_paths[VK_SHADER_STAGE_VERTEX_BIT]   = VERTEX_SHADER_PATH + ".spv";
+  std::unordered_map<VkShaderStageFlagBits, std::string> shader_paths_wf;
+  shader_paths_wf[VK_SHADER_STAGE_VERTEX_BIT] = VERTEX_SHADER_PATH + ".spv";
+  shader_paths_wf[VK_SHADER_STAGE_GEOMETRY_BIT] = GEOMETRY_SHADER_PATH + ".spv";
+  shader_paths_wf[VK_SHADER_STAGE_FRAGMENT_BIT] = FRAGMENT_SHADER_PATH + ".spv";
 
-  maker.LoadShaders(m_device, shader_paths);
+  maker_wf.LoadShaders(m_device, shader_paths_wf);
 
-  m_basicForwardPipeline.layout = maker.MakeLayout(m_device, {m_dSetLayout}, sizeof(pushConst2M));
-  maker.SetDefaultState(m_width, m_height);
+  m_wireFramePipeline.layout = maker_wf.MakeLayout(m_device, {m_dSetLayout}, sizeof(pushConst2M));
+  maker_wf.SetDefaultState(m_width, m_height);
 
-  m_basicForwardPipeline.pipeline = maker.MakePipeline(m_device, m_pScnMgr->GetPipelineVertexInputStateCreateInfo(),
-                                                       m_screenRenderPass, {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR});
+  m_wireFramePipeline.pipeline = maker_wf.MakePipeline(m_device, m_pScnMgr->GetPipelineVertexInputStateCreateInfo(),
+                                                    m_screenRenderPass, {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR});
 }
 
 void SimpleRender::CreateUniformBuffer()
@@ -230,10 +232,10 @@ void SimpleRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkFramebu
     vkCmdBeginRenderPass(a_cmdBuff, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, a_pipeline);
 
-    vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_basicForwardPipeline.layout, 0, 1,
+    vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_wireFramePipeline.layout, 0, 1,
                             &m_dSet, 0, VK_NULL_HANDLE);
 
-    VkShaderStageFlags stageFlags = (VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    VkShaderStageFlags stageFlags = (VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_GEOMETRY_BIT);
 
     VkDeviceSize zero_offset = 0u;
     VkBuffer vertexBuf = m_pScnMgr->GetVertexBuffer();
@@ -247,7 +249,7 @@ void SimpleRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkFramebu
       auto inst = m_pScnMgr->GetInstanceInfo(i);
 
       pushConst2M.model = m_pScnMgr->GetInstanceMatrix(i);
-      vkCmdPushConstants(a_cmdBuff, m_basicForwardPipeline.layout, stageFlags, 0,
+      vkCmdPushConstants(a_cmdBuff, m_wireFramePipeline.layout, stageFlags, 0,
                          sizeof(pushConst2M), &pushConst2M);
 
       auto mesh_info = m_pScnMgr->GetMeshInfo(inst.mesh_id);
@@ -334,7 +336,7 @@ void SimpleRender::RecreateSwapChain()
   for (uint32_t i = 0; i < m_swapchain.GetImageCount(); ++i)
   {
     BuildCommandBufferSimple(m_cmdBuffersDrawMain[i], m_frameBuffers[i],
-                             m_swapchain.GetAttachment(i).view, m_basicForwardPipeline.pipeline);
+                             m_swapchain.GetAttachment(i).view, m_wireFramePipeline.pipeline);
   }
 
   m_pGUIRender->OnSwapchainChanged(m_swapchain);
@@ -350,16 +352,15 @@ void SimpleRender::Cleanup()
     vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
     m_surface = VK_NULL_HANDLE;
   }
-
-  if (m_basicForwardPipeline.pipeline != VK_NULL_HANDLE)
+  if (m_wireFramePipeline.pipeline != VK_NULL_HANDLE)
   {
-    vkDestroyPipeline(m_device, m_basicForwardPipeline.pipeline, nullptr);
-    m_basicForwardPipeline.pipeline = VK_NULL_HANDLE;
+      vkDestroyPipeline(m_device, m_wireFramePipeline.pipeline, nullptr);
+      m_wireFramePipeline.pipeline = VK_NULL_HANDLE;
   }
-  if (m_basicForwardPipeline.layout != VK_NULL_HANDLE)
+  if (m_wireFramePipeline.layout != VK_NULL_HANDLE)
   {
-    vkDestroyPipelineLayout(m_device, m_basicForwardPipeline.layout, nullptr);
-    m_basicForwardPipeline.layout = VK_NULL_HANDLE;
+      vkDestroyPipelineLayout(m_device, m_wireFramePipeline.layout, nullptr);
+      m_wireFramePipeline.layout = VK_NULL_HANDLE;
   }
 
   if (m_presentationResources.imageAvailable != VK_NULL_HANDLE)
@@ -432,7 +433,7 @@ void SimpleRender::ProcessInput(const AppInput &input)
     for (uint32_t i = 0; i < m_framesInFlight; ++i)
     {
       BuildCommandBufferSimple(m_cmdBuffersDrawMain[i], m_frameBuffers[i],
-                               m_swapchain.GetAttachment(i).view, m_basicForwardPipeline.pipeline);
+                               m_swapchain.GetAttachment(i).view, m_wireFramePipeline.pipeline);
     }
   }
 
@@ -474,7 +475,7 @@ void SimpleRender::LoadScene(const char* path, bool transpose_inst_matrices)
   for (uint32_t i = 0; i < m_framesInFlight; ++i)
   {
     BuildCommandBufferSimple(m_cmdBuffersDrawMain[i], m_frameBuffers[i],
-                             m_swapchain.GetAttachment(i).view, m_basicForwardPipeline.pipeline);
+                             m_swapchain.GetAttachment(i).view, m_wireFramePipeline.pipeline);
   }
 }
 
@@ -492,7 +493,7 @@ void SimpleRender::DrawFrameSimple()
   VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
   BuildCommandBufferSimple(currentCmdBuf, m_frameBuffers[imageIdx], m_swapchain.GetAttachment(imageIdx).view,
-                           m_basicForwardPipeline.pipeline);
+                           m_wireFramePipeline.pipeline);
 
   VkSubmitInfo submitInfo = {};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -596,7 +597,7 @@ void SimpleRender::DrawFrameWithGUI()
   VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
   BuildCommandBufferSimple(currentCmdBuf, m_frameBuffers[imageIdx], m_swapchain.GetAttachment(imageIdx).view,
-    m_basicForwardPipeline.pipeline);
+                           m_wireFramePipeline.pipeline);
 
   ImDrawData* pDrawData = ImGui::GetDrawData();
   auto currentGUICmdBuf = m_pGUIRender->BuildGUIRenderCommand(imageIdx, pDrawData);

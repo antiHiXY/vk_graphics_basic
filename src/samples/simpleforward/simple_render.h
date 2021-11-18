@@ -18,8 +18,9 @@
 class SimpleRender : public IRender
 {
 public:
-  const std::string VERTEX_SHADER_PATH = "../resources/shaders/simple.vert";
-  const std::string FRAGMENT_SHADER_PATH = "../resources/shaders/simple.frag";
+  const std::string VERTEX_SHADER_PATH = "../resources/shaders/wire_frame.vert";
+  const std::string GEOMETRY_SHADER_PATH = "../resources/shaders/wire_frame.geom";
+  const std::string FRAGMENT_SHADER_PATH = "../resources/shaders/wire_frame.frag";
 
   SimpleRender(uint32_t a_width, uint32_t a_height);
   ~SimpleRender()  { Cleanup(); };
@@ -98,6 +99,7 @@ protected:
   void* m_uboMappedMem = nullptr;
 
   pipeline_data_t m_basicForwardPipeline {};
+  pipeline_data_t m_wireFramePipeline {};
 
   VkDescriptorSet m_dSet = VK_NULL_HANDLE;
   VkDescriptorSetLayout m_dSetLayout = VK_NULL_HANDLE;

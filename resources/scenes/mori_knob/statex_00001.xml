@@ -1,0 +1,238 @@
+<?xml version="1.0"?>
+<textures_lib total_chunks="5">
+  <texture id="0" name="Map#0" loc="data/chunk_00000.image4ub" offset="8" bytesize="16" width="2" height="2" dl="0" />
+</textures_lib>
+<materials_lib>
+  <material id="0" name="hydra_placeholder_material" type="hydra_material">
+    <diffuse brdf_type="lambert">
+      <color>0.078 0.0 0.156</color>
+    </diffuse>
+  </material>
+  <material id="1" name="grayOverrideMat" type="hydra_material">
+    <diffuse brdf_type="lambert">
+      <color val="0.5 0.5 0.5" />
+    </diffuse>
+  </material>
+  <material id="2" name="BackGroundMat" type="hydra_material">
+    <emission>
+      <color val="0 0 0" />
+      <cast_gi val="1" />
+      <multiplier val="1" />
+    </emission>
+    <diffuse brdf_type="lambert">
+      <color val="0.6 0.6 0.6" />
+      <roughness val="0" />
+    </diffuse>
+    <reflectivity brdf_type="phong">
+      <extrusion val="maxcolor" />
+      <color val="0 0 0" />
+      <glossiness val="0.300000012" />
+      <fresnel val="1" />
+      <fresnel_ior val="1.5" />
+    </reflectivity>
+  </material>
+  <material id="3" name="OuterMat" type="hydra_material">
+    <diffuse brdf_type="lambert">
+      <color val="0 0 0" />
+      <roughness val="0" />
+    </diffuse>
+    <reflectivity brdf_type="ggx">
+      <extrusion val="maxcolor" />
+      <color val="0 0 0" />
+      <glossiness val="1" />
+      <energy_fix val="1" />
+      <fresnel val="1" />
+      <fresnel_ior val="1.5" />
+      <anisotropy val="0" rot="0" flip_axis="1" />
+    </reflectivity>
+    <transparency brdf_type="phong">
+      <color val="1 0.117647 0.117647" tex_apply_mode="multiply" />
+      <glossiness val="0.899999976" />
+      <thin_walled val="0" />
+      <fog_color val="1 0.992157 0.992157" />
+      <fog_multiplier val="0" />
+      <ior val="1.5" />
+    </transparency>
+    <opacity />
+    <emission>
+      <color val="0 0 0" />
+      <cast_gi val="1" />
+    </emission>
+    <translucency>
+      <color val="0 0 0" />
+      <multiplier val="0" />
+    </translucency>
+  </material>
+  <material id="4" name="InnerMat" type="hydra_material">
+    <diffuse brdf_type="lambert">
+      <color val="0.768627 0.768627 0.768627" />
+      <roughness val="0" />
+    </diffuse>
+    <reflectivity brdf_type="beckmann">
+      <extrusion val="maxcolor" />
+      <color val="1 1 1" />
+      <glossiness val="0.600000024" />
+      <energy_fix val="1" />
+      <fresnel val="1" />
+      <fresnel_ior val="10" />
+      <anisotropy val="0" rot="0" flip_axis="1" />
+    </reflectivity>
+    <transparency brdf_type="phong">
+      <color val="0 0 0" />
+      <glossiness val="1" />
+      <thin_walled val="0" />
+      <fog_color val="1 1 1" />
+      <fog_multiplier val="0" />
+      <ior val="1.5" />
+    </transparency>
+    <opacity />
+    <emission>
+      <color val="0 0 0" />
+      <cast_gi val="1" />
+    </emission>
+    <translucency>
+      <color val="0 0 0" />
+      <multiplier val="0" />
+    </translucency>
+  </material>
+  <material id="5" name="LTELogo" type="hydra_material">
+    <emission>
+      <color val="0 0 0" />
+      <cast_gi val="1" />
+      <multiplier val="1" />
+    </emission>
+    <diffuse brdf_type="lambert">
+      <color val="0.25 0.25 0.25" />
+      <roughness val="0" />
+    </diffuse>
+    <reflectivity brdf_type="phong">
+      <extrusion val="maxcolor" />
+      <color val="0.5 0.5 0.5" />
+      <glossiness val="2" />
+      <fresnel val="1" />
+      <fresnel_ior val="1.5" />
+    </reflectivity>
+  </material>
+  <material id="6" name="environment_material" type="hydra_material" light_id="0" visible="1">
+    <emission>
+      <color val="0.419608 0.505882 0.564706" />
+    </emission>
+  </material>
+  <material id="7" name="Direct001_material" type="hydra_material" light_id="1" visible="1">
+    <emission>
+      <color val="3.14159 2.48863 1.9096" />
+    </emission>
+  </material>
+</materials_lib>
+<geometry_lib total_chunks="5">
+  <mesh id="0" name="BackGroundMat" type="vsgf" bytesize="36824" loc="data/chunk_00001.vsgf" offset="0" vertNum="600" triNum="200" dl="0" path="" bbox="-10.474 11.8468 -0.528027 6.63483 -5.77528 12.8432">
+    <positions type="array4f" bytesize="9600" offset="24" apply="vertex" />
+    <normals type="array4f" bytesize="9600" offset="9624" apply="vertex" />
+    <tangents type="array4f" bytesize="9600" offset="19224" apply="vertex" />
+    <texcoords type="array2f" bytesize="4800" offset="28824" apply="vertex" />
+    <indices type="array1i" bytesize="2400" offset="33624" apply="tlist" />
+    <matindices type="array1i" bytesize="800" offset="36024" apply="primitive" />
+  </mesh>
+  <mesh id="1" name="InnerMat" type="vsgf" bytesize="817720" loc="data/chunk_00002.vsgf" offset="0" vertNum="13332" triNum="4444" dl="0" path="" bbox="-0.373317 0.373317 -0.312763 0.439675 -0.376152 0.376152">
+    <positions type="array4f" bytesize="213312" offset="24" apply="vertex" />
+    <normals type="array4f" bytesize="213312" offset="213336" apply="vertex" />
+    <tangents type="array4f" bytesize="213312" offset="426648" apply="vertex" />
+    <texcoords type="array2f" bytesize="106656" offset="639960" apply="vertex" />
+    <indices type="array1i" bytesize="53328" offset="746616" apply="tlist" />
+    <matindices type="array1i" bytesize="17776" offset="799944" apply="primitive" />
+  </mesh>
+  <mesh id="2" name="LTELogo" type="vsgf" bytesize="614584" loc="data/chunk_00003.vsgf" offset="0" vertNum="10020" triNum="3340" dl="0" path="" bbox="-1.38126 -0.57391 -0.528027 -0.490664 -0.420753 -0.143706">
+    <positions type="array4f" bytesize="160320" offset="24" apply="vertex" />
+    <normals type="array4f" bytesize="160320" offset="160344" apply="vertex" />
+    <tangents type="array4f" bytesize="160320" offset="320664" apply="vertex" />
+    <texcoords type="array2f" bytesize="80160" offset="480984" apply="vertex" />
+    <indices type="array1i" bytesize="40080" offset="561144" apply="tlist" />
+    <matindices type="array1i" bytesize="13360" offset="601224" apply="primitive" />
+  </mesh>
+  <mesh id="3" name="OuterMat" type="vsgf" bytesize="733080" loc="data/chunk_00004.vsgf" offset="0" vertNum="11952" triNum="3984" dl="0" path="" bbox="-0.571863 0.571863 -0.525157 0.550268 -0.484182 0.571863">
+    <positions type="array4f" bytesize="191232" offset="24" apply="vertex" />
+    <normals type="array4f" bytesize="191232" offset="191256" apply="vertex" />
+    <tangents type="array4f" bytesize="191232" offset="382488" apply="vertex" />
+    <texcoords type="array2f" bytesize="95616" offset="573720" apply="vertex" />
+    <indices type="array1i" bytesize="47808" offset="669336" apply="tlist" />
+    <matindices type="array1i" bytesize="15936" offset="717144" apply="primitive" />
+  </mesh>
+</geometry_lib>
+<lights_lib>
+  <light id="0" name="environment" type="sky" shape="point" distribution="uniform" visible="1" mat_id="6">
+    <intensity>
+      <color val="0.419608 0.505882 0.564706" />
+      <multiplier val="1" />
+    </intensity>
+  </light>
+  <light id="1" name="Direct001" type="directional" shape="point" distribution="directional" visible="1" mat_id="7">
+    <intensity>
+      <color val="1 0.792157 0.607843" />
+      <multiplier val="3.14159274" />
+    </intensity>
+    <shadow_softness val="1" />
+    <angle_radius val="0" />
+    <size inner_radius="2.28600001" outer_radius="3.04799986" />
+  </light>
+</lights_lib>
+<cam_lib>
+  <camera id="0" name="Camera001" type="uvn">
+    <fov>45</fov>
+    <nearClipPlane>0.00999999978</nearClipPlane>
+    <farClipPlane>100</farClipPlane>
+    <enable_dof>0</enable_dof>
+    <dof_lens_radius>0.00999999978</dof_lens_radius>
+    <up>-0.0506964 0.951269 0.304166</up>
+    <position>1.93787e-07 0.871506 -3.302</position>
+    <look_at>-1.85329 -2.78262 7.81727</look_at>
+    <tiltRotX>0</tiltRotX>
+    <tiltRotY>0</tiltRotY>
+    <tiltShiftX>0</tiltShiftX>
+    <tiltShiftY>0</tiltShiftY>
+  </camera>
+</cam_lib>
+<render_lib>
+  <render_settings type="HydraModern" id="0">
+    <width>1024</width>
+    <height>1024</height>
+    <method_primary>pathtracing</method_primary>
+    <method_secondary>pathtracing</method_secondary>
+    <method_tertiary>pathtracing</method_tertiary>
+    <method_caustic>pathtracing</method_caustic>
+    <shadows>1</shadows>
+    <trace_depth>10</trace_depth>
+    <diff_trace_depth>8</diff_trace_depth>
+    <pt_error>2.5</pt_error>
+    <minRaysPerPixel>64</minRaysPerPixel>
+    <maxRaysPerPixel>859</maxRaysPerPixel>
+    <qmc_variant>1</qmc_variant>
+    <mmlt_burn_iters>1024</mmlt_burn_iters>
+    <mmlt_step_power>normal</mmlt_step_power>
+    <mmlt_step_size>0.5</mmlt_step_size>
+    <mmlt_threads>524288</mmlt_threads>
+    <mmlt_multBrightness>1</mmlt_multBrightness>
+    <mlt_med_enable>false</mlt_med_enable>
+    <mlt_med_threshold>0.400000006</mlt_med_threshold>
+    <envclamp>5</envclamp>
+    <clamping>1000000</clamping>
+    <separate_swap>0</separate_swap>
+    <forceGPUFrameBuffer>0</forceGPUFrameBuffer>
+    <evalgbuffer>1</evalgbuffer>
+    <dont_run>0</dont_run>
+    <scenePrepass>0</scenePrepass>
+    <offline_pt>0</offline_pt>
+    <resources_path>C:/[Hydra]/bin2/shaders</resources_path>
+    <tmGamma>2.20000005</tmGamma>
+    <outputRedirect>0</outputRedirect>
+  </render_settings>
+</render_lib>
+<scenes>
+  <scene id="0" name="my scene" discard="1" bbox="-10.4774 11.8434 -0.415546 6.74731 -6.55583 12.0627">
+    <instance id="0" mesh_id="0" rmap_id="-1" scn_id="0" scn_sid="0" matrix="1 0 0 -0.00341343 0 1 0 0.112481 0 0 1 -0.780548 0 0 0 1 " />
+    <instance id="1" mesh_id="1" rmap_id="-1" scn_id="0" scn_sid="0" matrix="1 0 0 -0.00341343 0 1 0 0.112481 0 0 1 -0.780548 0 0 0 1 " />
+    <instance id="2" mesh_id="2" rmap_id="-1" scn_id="0" scn_sid="0" matrix="1 0 0 -0.00341343 0 1 0 0.112481 0 0 1 -0.780548 0 0 0 1 " />
+    <instance id="3" mesh_id="3" rmap_id="-1" scn_id="0" scn_sid="0" matrix="1 0 0 -0.00341343 0 1 0 0.112481 0 0 1 -0.780548 0 0 0 1 " />
+    <instance_light id="0" light_id="0" matrix="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 " lgroup_id="-1" />
+    <instance_light id="1" light_id="1" matrix="-0.504082 -0.672351 -0.542075 -9.63551 0 0.627652 -0.778494 11.0571 0.863656 -0.392425 -0.316388 -5.53117 0 0 0 1 " lgroup_id="-1" />
+  </scene>
+</scenes>

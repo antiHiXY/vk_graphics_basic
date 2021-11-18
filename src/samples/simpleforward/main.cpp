@@ -43,9 +43,9 @@ int main()
 
   initVulkanGLFW(app, window, VULKAN_DEVICE_ID);
 
-  app->LoadScene("../resources/scenes/043_cornell_normals/statex_00001.xml", false);
+  app->LoadScene("../resources/scenes/mori_knob/change_00000.xml", false);
 
-  bool showGUI = true;
+  bool showGUI = false;
   mainLoop(app, window, showGUI);
 
   return 0;

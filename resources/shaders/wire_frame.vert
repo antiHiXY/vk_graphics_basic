@@ -14,17 +14,14 @@ layout(push_constant) uniform params_t
     mat4 mModel;
 } params;
 
-
 layout (location = 0 ) out VS_OUT
 {
     vec3 wPos;
     vec3 wNorm;
     vec3 wTangent;
     vec2 texCoord;
-    vec4 color;
 } vOut;
 
-out gl_PerVertex { vec4 gl_Position; };
 void main(void)
 {
     const vec4 wNorm = vec4(DecodeNormal(floatBitsToInt(vPosNorm.w)),         0.0f);
@@ -34,8 +31,6 @@ void main(void)
     vOut.wNorm    = normalize(mat3(transpose(inverse(params.mModel))) * wNorm.xyz);
     vOut.wTangent = normalize(mat3(transpose(inverse(params.mModel))) * wTang.xyz);
     vOut.texCoord = vTexCoordAndTang.xy;
-
-    vOut.color    = vec4(exp(vOut.wPos) * exp(1.f / vOut.wNorm) * 5.f, 1.f);
 
     gl_Position   = params.mProjView * vec4(vOut.wPos, 1.0);
 }
