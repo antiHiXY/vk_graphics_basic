@@ -178,7 +178,7 @@ void SimpleRender::SetupSimplePipeline()
   const float scale = .3f;
 
   mat4 scaleMatrix = LiteMath::scale4x4(vec3(.3f));
-  Box4f bBox = m_pScnMgr->GetMeshBbox(1);
+  Box4f bBox = m_pScnMgr->GetInstanceBbox(1);
 
   std::array <mat4, NUMBEROFINSTANCES> values;
   std::array <float4, NUMBEROFINSTANCES * 2> corners;

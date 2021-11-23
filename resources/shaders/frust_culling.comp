@@ -32,8 +32,8 @@ layout(std430, binding = 2) buffer indirectionBuffer
 
 shared uint counter;
 
-const vec4 MinFrustrumPoint = vec4(-1, -1, 0, 1);
-const vec4 MaxFrustrumPoint = vec4(1, 1, 1, 1);
+const vec4 MinFrustrumPoint = vec4(-1.f, -1.f, 0.0f, 1.0f);
+const vec4 MaxFrustrumPoint = vec4(1.f, 1.f, 1.0f, 1.0f);
 
 bool isPointInsideAABB(vec4 point) 
 {
@@ -52,11 +52,25 @@ void main()
 
     vec4 minbBoxPoint = bBoxBuf[2 * idx];
     vec4 maxbBoxPoint = bBoxBuf[2 * idx + 1];
-    vec4 minProjPoint = params.mProjView * minbBoxPoint;
-    vec4 maxProjPoint = params.mProjView * maxbBoxPoint;
-    minProjPoint = minProjPoint / minProjPoint.w;
-    maxProjPoint = maxProjPoint / maxProjPoint.w;
-    if (isPointInsideAABB(minProjPoint) && isPointInsideAABB(maxProjPoint)) 
+    vec4 bBoxVertices[8] = { 
+                            vec4(maxbBoxPoint.x, maxbBoxPoint.y, maxbBoxPoint.z, 1.f),
+                            vec4(maxbBoxPoint.x, maxbBoxPoint.y, minbBoxPoint.z, 1.f),
+                            vec4(maxbBoxPoint.x, minbBoxPoint.y, maxbBoxPoint.z, 1.f),
+                            vec4(maxbBoxPoint.x, minbBoxPoint.y, minbBoxPoint.z, 1.f),
+                            vec4(minbBoxPoint.x, maxbBoxPoint.y, maxbBoxPoint.z, 1.f),
+                            vec4(minbBoxPoint.x, maxbBoxPoint.y, minbBoxPoint.z, 1.f),
+                            vec4(minbBoxPoint.x, minbBoxPoint.y, maxbBoxPoint.z, 1.f),
+                            vec4(minbBoxPoint.x, minbBoxPoint.y, minbBoxPoint.z, 1.f)
+                         };
+    barrier();
+    bool draw = false;
+    for (uint j = 0; j < 8; ++j)
+    {
+        vec4 pointProj = params.mProjView * bBoxVertices[j];
+        pointProj = pointProj / pointProj.w;
+        draw = draw || isPointInsideAABB(pointProj);
+    }
+    if (draw) 
     {
         uint i = atomicAdd(counter, 1);
         instInd[i] = idx;
