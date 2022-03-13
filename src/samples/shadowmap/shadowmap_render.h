@@ -4,6 +4,7 @@
 #define VK_NO_PROTOTYPES
 #include "../../render/scene_mgr.h"
 #include "../../render/render_common.h"
+#include "../../render/render_gui.h"
 #include "../../../resources/shaders/common.h"
 #include <geom/vk_mesh.h>
 #include <vk_descriptor_sets.h>
@@ -99,6 +100,7 @@ private:
 
   pipeline_data_t m_basicForwardPipeline {};
   pipeline_data_t m_shadowPipeline {};
+  pipeline_data_t m_VSMPipeline {};
 
   VkDescriptorSet m_dSet = VK_NULL_HANDLE;
   VkDescriptorSetLayout m_dSetLayout = VK_NULL_HANDLE;
@@ -116,6 +118,8 @@ private:
   uint32_t m_height = 1024u;
   uint32_t m_framesInFlight = 2u;
   bool m_vsync = false;
+  int  blurRadius = 3;
+  bool vsmMode    = false;
 
   VkPhysicalDeviceFeatures m_enabledDeviceFeatures = {};
   std::vector<const char*> m_deviceExtensions      = {};
@@ -132,8 +136,11 @@ private:
   //std::shared_ptr<vk_utils::RenderableTexture2D> m_pShadowMap;
   std::shared_ptr<vk_utils::RenderTarget>        m_pShadowMap2;
   uint32_t                                       m_shadowMapId = 0;
+  std::shared_ptr<vk_utils::RenderTarget>        m_pVSM;
+  uint32_t                                       m_VSMId = 0;
   
   VkDeviceMemory        m_memShadowMap = VK_NULL_HANDLE;
+  VkDeviceMemory        m_memVSM       = VK_NULL_HANDLE;
   VkDescriptorSet       m_quadDS; 
   VkDescriptorSetLayout m_quadDSLayout = nullptr;
 
@@ -187,6 +194,10 @@ private:
   void SetupDeviceFeatures();
   void SetupDeviceExtensions();
   void SetupValidationLayers();
+
+  std::shared_ptr<IRenderGUI> m_pGUIRender;
+  virtual void SetupGUIElements();
+  void         DrawFrameWithGUI();
 };
 
 

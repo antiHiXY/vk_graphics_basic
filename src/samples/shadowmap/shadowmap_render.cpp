@@ -97,6 +97,7 @@ void SimpleShadowmapRender::InitPresentation(VkSurfaceKHR &a_surface)
   // create shadow map
   //
   m_pShadowMap2 = std::make_shared<vk_utils::RenderTarget>(m_device, VkExtent2D{2048, 2048});
+  m_pVSM = std::make_shared<vk_utils::RenderTarget>(m_device, VkExtent2D{2048, 2048});
 
   vk_utils::AttachmentInfo infoDepth;
   infoDepth.format           = VK_FORMAT_D16_UNORM;
@@ -116,9 +117,33 @@ void SimpleShadowmapRender::InitPresentation(VkSurfaceKHR &a_surface)
     VK_CHECK_RESULT(vkAllocateMemory(m_device, &allocateInfo, NULL, &m_memShadowMap));
   }
 
+  vk_utils::AttachmentInfo infoVSM;
+  infoVSM.format           = VK_FORMAT_R16G16_SFLOAT;
+  infoVSM.usage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT  | VK_IMAGE_USAGE_SAMPLED_BIT;
+  infoVSM.imageSampleCount = VK_SAMPLE_COUNT_1_BIT;
+  m_shadowMapId            = m_pVSM->CreateAttachment(infoVSM);
+  auto memReq2             = m_pVSM->GetMemoryRequirements()[0]; // we know that we have only one texture
+
+  // memory for all shadowmaps (well, if you have them more than 1 ...)
+  {
+    VkMemoryAllocateInfo allocateInfoVSM = {};
+    allocateInfoVSM.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocateInfoVSM.pNext           = nullptr;
+    allocateInfoVSM.allocationSize  = memReq2.size;
+    allocateInfoVSM.memoryTypeIndex = vk_utils::findMemoryType(memReq2.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_physicalDevice);
+
+    VK_CHECK_RESULT(vkAllocateMemory(m_device, &allocateInfoVSM, NULL, &m_memVSM));
+  }
+
   m_pShadowMap2->CreateViewAndBindMemory(m_memShadowMap, {0});
   m_pShadowMap2->CreateDefaultSampler();
   m_pShadowMap2->CreateDefaultRenderPass();
+
+  m_pVSM->CreateViewAndBindMemory(m_memVSM, {0});
+  m_pVSM->CreateDefaultSampler();
+  m_pVSM->CreateDefaultRenderPass();
+
+   m_pGUIRender = std::make_shared<ImGuiRender>(m_instance, m_device, m_physicalDevice, m_queueFamilyIDXs.graphics, m_graphicsQueue, m_swapchain);
 }
 
 void SimpleShadowmapRender::CreateInstance()
@@ -157,16 +182,18 @@ void SimpleShadowmapRender::SetupSimplePipeline()
 {
   std::vector<std::pair<VkDescriptorType, uint32_t> > dtypes = {
       {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,             1},
-      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,     2}
+      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,     3}
   };
 
   m_pBindings = std::make_shared<vk_utils::DescriptorMaker>(m_device, dtypes, 2);
   
   auto shadowMap = m_pShadowMap2->m_attachments[m_shadowMapId];
+  auto VShadowMap = m_pVSM->m_attachments[m_VSMId];
 
   m_pBindings->BindBegin(VK_SHADER_STAGE_FRAGMENT_BIT);
   m_pBindings->BindBuffer(0, m_ubo, VK_NULL_HANDLE, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
   m_pBindings->BindImage (1, shadowMap.view, m_pShadowMap2->m_sampler, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+  m_pBindings->BindImage (2, VShadowMap.view, m_pVSM->m_sampler, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
   m_pBindings->BindEnd(&m_dSet, &m_dSetLayout);
 
   //m_pBindings->BindImage(0, m_GBufTarget->m_attachments[m_GBuf_idx[GBUF_ATTACHMENT::POS_Z]].view, m_GBufTarget->m_sampler, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
@@ -187,7 +214,11 @@ void SimpleShadowmapRender::SetupSimplePipeline()
     vkDestroyPipeline(m_device, m_basicForwardPipeline.pipeline, nullptr);
     m_basicForwardPipeline.pipeline = VK_NULL_HANDLE;
   }
-
+  if(m_VSMPipeline.pipeline != VK_NULL_HANDLE)
+  {
+    vkDestroyPipeline(m_device, m_VSMPipeline.pipeline, nullptr);
+    m_VSMPipeline.pipeline = VK_NULL_HANDLE;
+  }
   if(m_shadowPipeline.pipeline != VK_NULL_HANDLE)
   {
     vkDestroyPipeline(m_device, m_shadowPipeline.pipeline, nullptr);
@@ -225,7 +256,19 @@ void SimpleShadowmapRender::SetupSimplePipeline()
 
   m_shadowPipeline.layout   = m_basicForwardPipeline.layout;
   m_shadowPipeline.pipeline = maker.MakePipeline(m_device, m_pScnMgr->GetPipelineVertexInputStateCreateInfo(), 
-                                                 m_pShadowMap2->m_renderPass);                                                       
+                                                 m_pShadowMap2->m_renderPass);
+
+  shader_paths.clear();
+  shader_paths[VK_SHADER_STAGE_VERTEX_BIT] = "../resources/shaders/blur.vert.spv";
+  shader_paths[VK_SHADER_STAGE_FRAGMENT_BIT] = "../resources/shaders/blur.frag.spv";
+  maker.LoadShaders(m_device, shader_paths);
+
+  maker.viewport.width  = float(m_pVSM->m_resolution.width);
+  maker.viewport.height = float(m_pVSM->m_resolution.height);
+  maker.scissor.extent  = VkExtent2D{ uint32_t(m_pVSM->m_resolution.width), uint32_t(m_pVSM->m_resolution.height) };
+
+  m_VSMPipeline.layout = maker.MakeLayout(m_device, {m_quadDSLayout}, sizeof(uint32_t));
+  m_VSMPipeline.pipeline = maker.MakePipeline(m_device, m_pScnMgr->GetPipelineVertexInputStateCreateInfo(), m_pVSM->m_renderPass);                                                       
 }
 
 void SimpleShadowmapRender::CreateUniformBuffer()
@@ -254,6 +297,8 @@ void SimpleShadowmapRender::UpdateUniformBuffer(float a_time)
   m_uniforms.lightMatrix = m_lightMatrix;
   m_uniforms.lightPos    = m_light.cam.pos; //LiteMath::float3(sinf(a_time), 1.0f, cosf(a_time));
   m_uniforms.time        = a_time;
+  m_uniforms.lightDir    = m_light.cam.forward();
+  m_uniforms.vsmMode     = vsmMode;
 
   m_uniforms.baseColor = LiteMath::float3(0.9f, 0.92f, 1.0f);
   memcpy(m_uboMappedMem, &m_uniforms, sizeof(m_uniforms));
@@ -326,6 +371,23 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
   }
   vkCmdEndRenderPass(a_cmdBuff);
 
+  if (vsmMode)
+  {
+    std::vector<VkClearValue> clears{{VkClearColorValue{{0.0f, 0.0f, 0.0f, 0.0f}}}};
+    VkRenderPassBeginInfo vsmRP = m_pVSM->GetRenderPassBeginInfo(0, clears);
+    vkCmdBeginRenderPass(a_cmdBuff, &vsmRP, VK_SUBPASS_CONTENTS_INLINE);
+    {
+      vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_VSMPipeline.pipeline);
+      vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_VSMPipeline.layout, 0, 1, &m_quadDS, 0, nullptr);
+
+      uint32_t radius = static_cast<uint32_t>(blurRadius);
+      vkCmdPushConstants(a_cmdBuff, m_VSMPipeline.layout, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0,
+                         sizeof(uint32_t), &radius);
+      vkCmdDrawIndexed(a_cmdBuff, 4, 1, 0, 0, 0);
+    }
+    vkCmdEndRenderPass(a_cmdBuff);
+  }
+
   //// draw final scene to screen
   //
   {
@@ -343,12 +405,12 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
     renderPassInfo.pClearValues    = &clearValues[0];
 
     vkCmdBeginRenderPass(a_cmdBuff, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    {
+      vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, a_pipeline);
+      vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_basicForwardPipeline.layout, 0, 1, &m_dSet, 0, VK_NULL_HANDLE);
 
-    vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, a_pipeline);
-    vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_basicForwardPipeline.layout, 0, 1, &m_dSet, 0, VK_NULL_HANDLE);
-
-    DrawSceneCmd(a_cmdBuff, m_worldViewProj);
-
+      DrawSceneCmd(a_cmdBuff, m_worldViewProj);
+    }
     vkCmdEndRenderPass(a_cmdBuff);
   }
 
@@ -426,7 +488,7 @@ void SimpleShadowmapRender::RecreateSwapChain()
     BuildCommandBufferSimple(m_cmdBuffersDrawMain[i], m_frameBuffers[i],
                              m_swapchain.GetAttachment(i).view, m_basicForwardPipeline.pipeline);
   }
-
+  m_pGUIRender->OnSwapchainChanged(m_swapchain);
 }
 
 void SimpleShadowmapRender::Cleanup()
@@ -554,6 +616,87 @@ void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matr
   }
 }
 
+void SimpleShadowmapRender::SetupGUIElements()
+{
+  ImGui_ImplVulkan_NewFrame();
+  ImGui_ImplGlfw_NewFrame();
+  ImGui::NewFrame();
+  {
+//    ImGui::ShowDemoWindow();
+    ImGui::Begin("Simple render settings");
+
+    ImGui::Checkbox("VSM Mode",&vsmMode);
+    ImGui::SliderInt("Blur Radius", &blurRadius, 1, 10);
+
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::End();
+  }
+
+  // Rendering
+  ImGui::Render();
+}
+
+void SimpleShadowmapRender::DrawFrameWithGUI()
+{
+  vkWaitForFences(m_device, 1, &m_frameFences[m_presentationResources.currentFrame], VK_TRUE, UINT64_MAX);
+  vkResetFences(m_device, 1, &m_frameFences[m_presentationResources.currentFrame]);
+
+  uint32_t imageIdx;
+  auto result = m_swapchain.AcquireNextImage(m_presentationResources.imageAvailable, &imageIdx);
+  if (result == VK_ERROR_OUT_OF_DATE_KHR)
+  {
+    RecreateSwapChain();
+    return;
+  }
+  else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+  {
+    RUN_TIME_ERROR("Failed to acquire the next swapchain image!");
+  }
+
+  auto currentCmdBuf = m_cmdBuffersDrawMain[m_presentationResources.currentFrame];
+
+  VkSemaphore waitSemaphores[] = {m_presentationResources.imageAvailable};
+  VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+
+  BuildCommandBufferSimple(currentCmdBuf, m_frameBuffers[imageIdx], m_swapchain.GetAttachment(imageIdx).view,
+    m_basicForwardPipeline.pipeline);
+
+  ImDrawData* pDrawData = ImGui::GetDrawData();
+  auto currentGUICmdBuf = m_pGUIRender->BuildGUIRenderCommand(imageIdx, pDrawData);
+
+  std::vector<VkCommandBuffer> submitCmdBufs = { currentCmdBuf, currentGUICmdBuf};
+
+  VkSubmitInfo submitInfo = {};
+  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submitInfo.waitSemaphoreCount = 1;
+  submitInfo.pWaitSemaphores = waitSemaphores;
+  submitInfo.pWaitDstStageMask = waitStages;
+  submitInfo.commandBufferCount = (uint32_t)submitCmdBufs.size();
+  submitInfo.pCommandBuffers = submitCmdBufs.data();
+
+  VkSemaphore signalSemaphores[] = {m_presentationResources.renderingFinished};
+  submitInfo.signalSemaphoreCount = 1;
+  submitInfo.pSignalSemaphores = signalSemaphores;
+
+  VK_CHECK_RESULT(vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, m_frameFences[m_presentationResources.currentFrame]));
+
+  VkResult presentRes = m_swapchain.QueuePresent(m_presentationResources.queue, imageIdx,
+    m_presentationResources.renderingFinished);
+
+  if (presentRes == VK_ERROR_OUT_OF_DATE_KHR || presentRes == VK_SUBOPTIMAL_KHR)
+  {
+    RecreateSwapChain();
+  }
+  else if (presentRes != VK_SUCCESS)
+  {
+    RUN_TIME_ERROR("Failed to present swapchain image");
+  }
+
+  m_presentationResources.currentFrame = (m_presentationResources.currentFrame + 1) % m_framesInFlight;
+
+  vkQueueWaitIdle(m_presentationResources.queue);
+}
+
 void SimpleShadowmapRender::DrawFrameSimple()
 {
   vkWaitForFences(m_device, 1, &m_frameFences[m_presentationResources.currentFrame], VK_TRUE, UINT64_MAX);
@@ -607,8 +750,9 @@ void SimpleShadowmapRender::DrawFrame(float a_time, DrawMode a_mode)
   switch (a_mode)
   {
     case DrawMode::WITH_GUI:
-//      DrawFrameWithGUI();
-//      break;
+      SetupGUIElements();
+      DrawFrameWithGUI();
+      break;
     case DrawMode::NO_GUI:
       DrawFrameSimple();
       break;

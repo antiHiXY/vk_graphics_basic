@@ -26,6 +26,8 @@ struct UniformParams
   float time;
   vec3  baseColor;
   bool animateLightColor;
+  vec3  lightDir;
+  bool vsmMode;
 };
 
 #endif //VK_GRAPHICS_BASIC_COMMON_H
