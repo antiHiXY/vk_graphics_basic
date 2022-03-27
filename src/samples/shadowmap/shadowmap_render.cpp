@@ -62,7 +62,7 @@ void SimpleShadowmapRender::InitVulkan(const char** a_instanceExtensions, uint32
   m_pScnMgr = std::make_shared<SceneManager>(m_device, m_physicalDevice, m_queueFamilyIDXs.transfer, m_queueFamilyIDXs.graphics, false);
 }
 
-void SimpleShadowmapRender::InitPresentation(VkSurfaceKHR &a_surface)
+void SimpleShadowmapRender::InitPresentation(VkSurfaceKHR &a_surface, bool initGUI)
 {
   m_surface = a_surface;
 
@@ -143,7 +143,8 @@ void SimpleShadowmapRender::InitPresentation(VkSurfaceKHR &a_surface)
   m_pVSM->CreateDefaultSampler();
   m_pVSM->CreateDefaultRenderPass();
 
-   m_pGUIRender = std::make_shared<ImGuiRender>(m_instance, m_device, m_physicalDevice, m_queueFamilyIDXs.graphics, m_graphicsQueue, m_swapchain);
+  if(initGUI)
+    m_pGUIRender = std::make_shared<ImGuiRender>(m_instance, m_device, m_physicalDevice, m_queueFamilyIDXs.graphics, m_graphicsQueue, m_swapchain);
 }
 
 void SimpleShadowmapRender::CreateInstance()
@@ -182,10 +183,10 @@ void SimpleShadowmapRender::SetupSimplePipeline()
 {
   std::vector<std::pair<VkDescriptorType, uint32_t> > dtypes = {
       {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,             1},
-      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,     3}
+      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,     128}
   };
 
-  m_pBindings = std::make_shared<vk_utils::DescriptorMaker>(m_device, dtypes, 2);
+  m_pBindings = std::make_shared<vk_utils::DescriptorMaker>(m_device, dtypes, 128);
   
   auto shadowMap = m_pShadowMap2->m_attachments[m_shadowMapId];
   auto VShadowMap = m_pVSM->m_attachments[m_VSMId];
@@ -380,9 +381,9 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
       vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_VSMPipeline.pipeline);
       vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_VSMPipeline.layout, 0, 1, &m_quadDS, 0, nullptr);
 
-      uint32_t radius = static_cast<uint32_t>(blurRadius);
+      uint32_t radius_m = static_cast<uint32_t>(blurRadius);
       vkCmdPushConstants(a_cmdBuff, m_VSMPipeline.layout, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0,
-                         sizeof(uint32_t), &radius);
+                         sizeof(uint32_t), &radius_m);
       vkCmdDrawIndexed(a_cmdBuff, 4, 1, 0, 0, 0);
     }
     vkCmdEndRenderPass(a_cmdBuff);
@@ -496,6 +497,12 @@ void SimpleShadowmapRender::Cleanup()
   m_pShadowMap2 = nullptr;
   m_pFSQuad     = nullptr; // smartptr delete it's resources
   
+  if(m_pGUIRender)
+  {
+    m_pGUIRender = nullptr;
+    ImGui::DestroyContext();
+  }
+
   if(m_memShadowMap != VK_NULL_HANDLE)
   {
     vkFreeMemory(m_device, m_memShadowMap, VK_NULL_HANDLE);

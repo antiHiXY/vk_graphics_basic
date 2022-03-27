@@ -25,7 +25,7 @@ layout (binding = 2) uniform sampler2D vsm;
 float shadow_calc(vec3 posLightSpaceNDC)
 {
   const vec2 shadowTexCoord    = posLightSpaceNDC.xy*0.5f + vec2(0.5f, 0.5f);  // just shift coords from [-1,1] to [0,1]               
-  const bool outOfView   = (shadowTexCoord.x < 0.0001f || shadowTexCoord.x > 0.9999f || shadowTexCoord.y < 0.0091f || shadowTexCoord.y > 0.9999f);
+  const bool outOfView   = (shadowTexCoord.x < 0.0001f || shadowTexCoord.x > 0.9999f || shadowTexCoord.y < 0.0001f || shadowTexCoord.y > 0.9999f);
 
   if (outOfView)
   {
@@ -42,6 +42,7 @@ float shadow_calc(vec3 posLightSpaceNDC)
 
     const float p = float(posLightSpaceNDC.z <= mu);
     const float pmax = sigma / (sigma + (posLightSpaceNDC.z - mu)*(posLightSpaceNDC.z - mu));
+    return max(p, pmax);
   }
 }
 
@@ -52,8 +53,8 @@ void main()
   const float shadow = shadow_calc(posLightSpaceNDC);
 
   float intensity      =  0.0f;
-  float cutOff         = cos(radians(4.5f));
-  float outerCutOff    = cos(radians(8.5f));
+  float cutOff         = cos(radians(8.5f));
+  float outerCutOff    = cos(radians(12.5f));
   float lightConstant  = 1.0f;
   float lightLinear    = 0.09f;
   float lightQuadratic = 0.032f;
