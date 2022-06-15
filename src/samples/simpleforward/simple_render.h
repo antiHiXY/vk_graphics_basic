@@ -12,6 +12,7 @@
 #include <vk_fbuf_attachment.h>
 #include <vk_images.h>
 #include <vk_swapchain.h>
+#include <vk_quad.h>
 #include <string>
 #include <iostream>
 
@@ -20,6 +21,11 @@ class SimpleRender : public IRender
 public:
   const std::string VERTEX_SHADER_PATH = "../resources/shaders/simple.vert";
   const std::string FRAGMENT_SHADER_PATH = "../resources/shaders/simple.frag";
+  const std::string POSTFX_SHADER_PATH = "../resources/shaders/postfx.frag";
+
+  const std::string QUAD_VERTEX_SHADER_PATH   = "../resources/shaders/quad3_vert.vert";
+  
+  
 
   SimpleRender(uint32_t a_width, uint32_t a_height);
   ~SimpleRender()  { Cleanup(); };
@@ -110,7 +116,16 @@ protected:
   VulkanSwapChain m_swapchain;
   std::vector<VkFramebuffer> m_frameBuffers;
   vk_utils::VulkanImageMem m_depthBuffer{};
+  VkFramebuffer m_postFXFrameBuffer;
   // ***
+
+  VkDescriptorSet m_postFX_dSet             = VK_NULL_HANDLE;
+  VkDescriptorSetLayout m_postFX_dSetLayout = VK_NULL_HANDLE;
+  VkRenderPass m_postFXRenderPass           = VK_NULL_HANDLE;
+
+  vk_utils::VulkanImageMem m_image {};
+  VkSampler m_sampler;
+  std::shared_ptr<vk_utils::IQuad> m_pFSPostFX;
 
   // *** GUI
   std::shared_ptr<IRenderGUI> m_pGUIRender;

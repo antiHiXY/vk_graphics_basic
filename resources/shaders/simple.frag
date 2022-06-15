@@ -25,12 +25,12 @@ void main()
     vec3 lightDir1 = normalize(Params.lightPos - surf.wPos);
     vec3 lightDir2 = vec3(0.0f, 0.0f, 1.0f);
 
-    const vec4 dark_violet = vec4(0.59f, 0.0f, 0.82f, 1.0f);
-    const vec4 chartreuse  = vec4(0.5f, 1.0f, 0.0f, 1.0f);
+    const vec4 blue = vec4(0.1f, 0.1f, 0.9f, 1.0f);
+    const vec4 red  = vec4(0.8f, 0.0f, 0.0f, 1.0f);
 
-    vec4 lightColor1 = mix(dark_violet, chartreuse, 0.5f);
+    vec4 lightColor1 = mix(blue, red, 0.5f);
     if(Params.animateLightColor)
-        lightColor1 = mix(dark_violet, chartreuse, abs(sin(Params.time)));
+        lightColor1 = mix(blue, red, abs(sin(Params.time * 0.1f)));
 
     vec4 lightColor2 = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
