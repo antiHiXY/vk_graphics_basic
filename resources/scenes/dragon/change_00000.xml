@@ -1,0 +1,109 @@
+<?xml version="1.0"?>
+<textures_lib>
+  <texture id="0" name="Map#0" loc="data/chunk_00000.image4ub" offset="8" bytesize="16" width="2" height="2" dl="0" />
+</textures_lib>
+<materials_lib>
+  <material id="0" name="hydra_placeholder_material" type="hydra_material">
+    <diffuse brdf_type="lambert">
+      <color>0.078 0.0 0.156</color>
+    </diffuse>
+  </material>
+  <material id="1" name="grayOverrideMat" type="hydra_material">
+    <diffuse brdf_type="lambert">
+      <color val="0.5 0.5 0.5" />
+    </diffuse>
+  </material>
+  <material id="2" name="default" type="hydra_material">
+    <diffuse brdf_type="lambert">
+      <color val="0.0713726 0.014902 0.0333333" />
+      <roughness val="0" />
+    </diffuse>
+    <reflectivity brdf_type="ggx">
+      <extrusion val="maxcolor" />
+      <color val="0.7 0.7 0.7" />
+      <glossiness val="0.899999976" />
+      <energy_fix val="1" />
+      <fresnel val="1" />
+      <fresnel_ior val="1.5" />
+      <anisotropy val="0" rot="0" flip_axis="1" />
+    </reflectivity>
+    <transparency brdf_type="phong">
+      <color val="0.901961 0.223529 0.764706" tex_apply_mode="multiply" />
+      <glossiness val="0.5" />
+      <thin_walled val="0" />
+      <fog_color val="0.231373 0.0352941 0.792157" />
+      <fog_multiplier val="0" />
+      <ior val="1.5" />
+    </transparency>
+    <opacity />
+    <emission>
+      <color val="0 0 0" />
+      <cast_gi val="1" />
+    </emission>
+    <translucency>
+      <color val="0 0 0" />
+      <multiplier val="0" />
+    </translucency>
+  </material>
+  <material id="3" name="environment_material" type="hydra_material" light_id="0" visible="1">
+    <emission>
+      <color val="0.419608 0.505882 0.564706" />
+    </emission>
+  </material>
+  <material id="4" name="Direct001_material" type="hydra_material" light_id="1" visible="1">
+    <emission>
+      <color val="3.14159 2.48863 1.9096" />
+    </emission>
+  </material>
+</materials_lib>
+<geometry_lib>
+  <mesh id="0" name="root" type="vsgf" bytesize="160320328" loc="data/chunk_00001.vsgf" offset="0" vertNum="2613918" triNum="871306" dl="0" path="" bbox="-1.91249 1.70645 -1.43743 2.14387 -2.21736 2.17127">
+    <positions type="array4f" bytesize="41822688" offset="24" apply="vertex" />
+    <normals type="array4f" bytesize="41822688" offset="41822712" apply="vertex" />
+    <tangents type="array4f" bytesize="41822688" offset="83645400" apply="vertex" />
+    <texcoords type="array2f" bytesize="20911344" offset="125468088" apply="vertex" />
+    <indices type="array1i" bytesize="10455672" offset="146379432" apply="tlist" />
+    <matindices type="array1i" bytesize="3485224" offset="156835104" apply="primitive" />
+  </mesh>
+</geometry_lib>
+<lights_lib>
+  <light id="0" name="environment" type="sky" shape="point" distribution="uniform" visible="1" mat_id="3">
+    <intensity>
+      <color val="0.419608 0.505882 0.564706" />
+      <multiplier val="1" />
+    </intensity>
+  </light>
+  <light id="1" name="Direct001" type="directional" shape="point" distribution="directional" visible="1" mat_id="4">
+    <intensity>
+      <color val="1 0.792157 0.607843" />
+      <multiplier val="3.14159274" />
+    </intensity>
+    <shadow_softness val="1" />
+    <angle_radius val="0" />
+    <size inner_radius="2.28600001" outer_radius="3.04799986" />
+  </light>
+</lights_lib>
+<cam_lib>
+  <camera id="0" name="Camera001" type="uvn">
+    <fov>45</fov>
+    <nearClipPlane>0.00999999978</nearClipPlane>
+    <farClipPlane>100</farClipPlane>
+    <enable_dof>0</enable_dof>
+    <dof_lens_radius>0.00999999978</dof_lens_radius>
+    <up>-0.0135605 0.999664 -0.0221118</up>
+    <position>-3.70347 0.150448 -6.52336</position>
+    <look_at>3.16057 0.491129 4.66914</look_at>
+    <tiltRotX>0</tiltRotX>
+    <tiltRotY>0</tiltRotY>
+    <tiltShiftX>0</tiltShiftX>
+    <tiltShiftY>0</tiltShiftY>
+  </camera>
+</cam_lib>
+<render_lib />
+<scenes>
+  <scene id="0" name="my scene" discard="1" bbox="-1.91249 1.70645 -1.43743 2.14387 -2.21736 2.17127">
+    <instance id="0" mesh_id="0" rmap_id="-1" scn_id="0" scn_sid="0" matrix="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 " />
+    <instance_light id="0" light_id="0" matrix="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 " lgroup_id="-1" />
+    <instance_light id="1" light_id="1" matrix="-0.504082 -0.672351 -0.542075 -9.63551 0 0.627652 -0.778494 11.0571 0.863656 -0.392425 -0.316388 -5.53117 0 0 0 1 " lgroup_id="-1" />
+  </scene>
+</scenes>
